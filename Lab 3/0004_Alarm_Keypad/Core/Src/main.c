@@ -53,6 +53,9 @@ UART_HandleTypeDef huart2;
 /* USER CODE BEGIN PV */
 extern char key;
 char hold[4];
+char entered_code[5] = "";
+const char correct_code[] = "1234";
+int code_index = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -73,63 +76,64 @@ static void MX_I2C1_Init(void);
   * @brief  The application entry point.
   * @retval int
   */
+/* USER CODE END Includes */
+
+/* USER CODE BEGIN PV */
+/* USER CODE END PV */
+
 int main(void)
 {
-  /* USER CODE BEGIN 1 */
-
-  /* USER CODE END 1 */
-
-  /* MCU Configuration--------------------------------------------------------*/
-
-  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-  HAL_Init();
-
-  /* USER CODE BEGIN Init */
-
-  /* USER CODE END Init */
-
-  /* Configure the system clock */
-  SystemClock_Config();
-
-  /* USER CODE BEGIN SysInit */
-
-  /* USER CODE END SysInit */
-
-  /* Initialize all configured peripherals */
-  MX_GPIO_Init();
-  MX_USART2_UART_Init();
-  MX_I2C1_Init();
-  /* USER CODE BEGIN 2 */
-  /* USER CODE BEGIN 2 */
+    HAL_Init();
+    SystemClock_Config();
+    MX_GPIO_Init();
+    MX_USART2_UART_Init();
+    MX_I2C1_Init();
+    
     SSD1306_Init();
-    SSD1306_GotoXY (0,0);
-    //SSD1306_Puts ("Voltage:", &Font_11x18, 1);
-    SSD1306_Puts ("Enter Code:", &Font_11x18, 1);
-    SSD1306_GotoXY (0, 30);
+    SSD1306_GotoXY(0, 0);
+    SSD1306_Puts("Enter Code:", &Font_11x18, 1);
     SSD1306_UpdateScreen();
-    SSD1306_UpdateScreen();
-    HAL_Delay (500);
+    HAL_Delay(500);
 
-  /* USER CODE END 2 */
+    while (1)
+    {
+        key = Get_Key();
+        if (key != 0) // If a key is pressed
+        {
+            entered_code[code_index++] = key;
+            SSD1306_GotoXY(0, 30);
+            SSD1306_Puts("*",&Font_11x18, 1);
+            SSD1306_UpdateScreen();
 
-  /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
-  while (1)
-  {
-    /* USER CODE END WHILE */
+            if (code_index == 4) // After entering 4 digits
+            {
+                entered_code[4] = '\0'; // Null terminate the string
+                SSD1306_GotoXY(0, 50);
 
-    /* USER CODE BEGIN 3 */
-	/* D10 to D7 as input pins for row 0 to row 3. D6 to D3 as output for column pins C1 to C3*/
-	  key = Get_Key();
-	  sprintf(hold, "%c", key);
-	  HAL_UART_Transmit(&huart2, (uint8_t *)hold, strlen(hold), 100);
-	  SSD1306_GotoXY (0, 30);
-	  SSD1306_UpdateScreen();
-	  SSD1306_Puts (hold, &Font_11x18, 1);
-	  SSD1306_UpdateScreen();
-	  HAL_Delay (500);
-  }
-  /* USER CODE END 3 */
+                if (strcmp(entered_code, correct_code) == 0)
+                {
+                    SSD1306_Puts("Correct", &Font_11x18, 1);
+                    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_SET); // Turn on LED
+                }
+                else
+                {
+                    SSD1306_Puts("Incorrect", &Font_11x18, 1);
+                    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET); // Turn off LED
+                }
+
+                SSD1306_UpdateScreen();
+                HAL_Delay(2000);
+
+                // Reset input for new entry
+                memset(entered_code, 0, sizeof(entered_code));
+                code_index = 0;
+                SSD1306_Clear();
+                SSD1306_GotoXY(0, 0);
+                SSD1306_Puts("Enter Code:", &Font_11x18, 1);
+                SSD1306_UpdateScreen();
+            }
+        }
+    }
 }
 
 /**
